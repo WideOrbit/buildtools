@@ -13,20 +13,20 @@ public class Program
 
         if (tcprops.ContainsKey("teamcity.build.branch"))
         {
-            Log("Using teamcity.build.branch: '" + tcprops["teamcity.build.branch"] + "'");
             branchname = tcprops["teamcity.build.branch"];
+            Log($"Using teamcity.build.branch: '{branchname}'");
         }
         else if (tcprops.ContainsKey("vcsroot.branch"))
         {
-            Log("Using vcsroot.branch: '" + tcprops["vcsroot.branch"] + "'");
             branchname = tcprops["vcsroot.branch"];
+            Log($"Using vcsroot.branch: '{branchname}'");
         }
         else
         {
             LogColor("Couldn't find any branch, using '1'", ConsoleColor.Yellow);
             branchname = "1";
         }
-        Log("branchname: '" + branchname + "'");
+        Log($"branchname: '{branchname}'");
 
         int index = branchname.LastIndexOf("/");
         if (index != -1)
@@ -42,19 +42,19 @@ public class Program
             branchname = "1";
         }
 
-        Log("branchname: '" + branchname + "'");
+        Log($"branchname: '{branchname}'");
 
         string buildnumber = Environment.GetEnvironmentVariable("BUILD_NUMBER");
-        Log("buildnumber: " + ((buildnumber == null) ? "<null>" : "'" + buildnumber + "'"));
+        Log("buildnumber: " + ((buildnumber == null) ? "<null>" : $"'{buildnumber}'"));
         if (string.IsNullOrEmpty(buildnumber))
         {
             LogColor("Couldn't find any buildnumber, using '0'", ConsoleColor.Yellow);
             buildnumber = "0";
         }
-        buildnumber = branchname + "." + buildnumber;
-        Log("buildnumber: '" + buildnumber + "'");
+        buildnumber = $"{branchname}.{buildnumber}";
+        Log($"buildnumber: '{buildnumber}'");
 
-        Log("##teamcity[buildNumber '" + buildnumber + "']");
+        Log($"##teamcity[buildNumber '{buildnumber}']");
 
         return 0;
     }
@@ -71,11 +71,11 @@ public class Program
         }
         if (!File.Exists(buildpropfile))
         {
-            LogColor("Couldn't find Teamcity build properties file: '" + buildpropfile + "'", ConsoleColor.Yellow);
+            LogColor($"Couldn't find Teamcity build properties file: '{buildpropfile}'", ConsoleColor.Yellow);
             return empty;
         }
 
-        Log("Reading Teamcity build properties file: '" + buildpropfile + "'");
+        Log($"Reading Teamcity build properties file: '{buildpropfile}'");
         string[] rows = File.ReadAllLines(buildpropfile);
 
         var valuesBuild = GetPropValues(rows);
@@ -88,11 +88,11 @@ public class Program
         }
         if (!File.Exists(configpropfile))
         {
-            LogColor("Couldn't find Teamcity config properties file: '" + configpropfile + "'", ConsoleColor.Yellow);
+            LogColor($"Couldn't find Teamcity config properties file: '{configpropfile}'", ConsoleColor.Yellow);
             return empty;
         }
 
-        Log("Reading Teamcity config properties file: '" + configpropfile + "'");
+        Log($"Reading Teamcity config properties file: '{configpropfile}'");
         rows = File.ReadAllLines(configpropfile);
 
         var valuesConfig = GetPropValues(rows);
