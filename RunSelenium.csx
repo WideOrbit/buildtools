@@ -396,7 +396,7 @@ Environment variables:
 
     private static void RunSeleniumTests()
     {
-        Log("Current Directory: '" + Directory.GetCurrentDirectory() + "'");
+        Log($"Current Directory: '{Directory.GetCurrentDirectory()}'");
 
         Log("Running nunit-console.exe...");
 
@@ -496,7 +496,7 @@ Environment variables:
 
     private static void GenerateReport()
     {
-        Log("Current Directory: '" + Directory.GetCurrentDirectory() + "'");
+        Log($"Current Directory: '{Directory.GetCurrentDirectory()}'");
 
         string doxygenArchive = Path.Combine(_toolsfolder, "doxygen.zip");
         LogTCSection($"Extracting Doxygen: {doxygenArchive}...", () =>
