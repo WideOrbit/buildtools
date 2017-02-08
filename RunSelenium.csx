@@ -197,9 +197,9 @@ Environment variables:
                 {
                     for (int i = 0; i < 10000; i++)
                     {
+                        targetfile = Path.Combine(archivefolder, $"{Path.GetFileName(filename)}.{i + 1}");
                         if (!File.Exists(targetfile))
                         {
-                            targetfile = Path.Combine(archivefolder, Path.GetFileName(filename));
                             break;
                         }
                     }
