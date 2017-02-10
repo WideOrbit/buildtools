@@ -4,9 +4,9 @@
 
 // If you add a new javascript to the js_unminified folder, also:
 // * Add the minified file in the root folder to the project as "Content", "Do not copy".
-//   (To tell VS to include it when publishing the web application)
+//   (to tell VS to include it when publishing the web application)
 // * Don't add it to Git.
-//   (To prevent Git to indicate a change after each compilation)
+//   (to prevent Git to indicate a change after each compilation)
 // * Add the javascript filename to any build script that verifies that files referenced by projects actually exists in the file system.
 //   (In our case it's the PreBuild.csx script that verifies this. If forgotten, it will cause build failures at the verification step in this script)
 
@@ -56,7 +56,7 @@ public class Program
     {
         LogColor("***** Minifying javascripts *****", ConsoleColor.Cyan);
 
-        Log("Current Directory: '" + Directory.GetCurrentDirectory() + "'");
+        Log($"Current Directory: '{Directory.GetCurrentDirectory()}'");
 
 
         string javaexe;
@@ -78,6 +78,10 @@ public class Program
                 .Where(p => File.Exists(p))
                 .ToArray();
 
+            string jrearchive = @"..\..\Library\3rd_party\Java\jre.7z";
+            string zipexe = @"..\..\_build_and_deploy\Build\Tools\7z.exe";
+            string jreexe = @"..\..\jre\bin\java.exe";
+
             if (paths.Length > 0)
             {
                 javaexe = Path.Combine(paths.First(), "java.exe");
@@ -86,31 +90,52 @@ public class Program
             {
                 javaexe = javaexes.OrderBy(p => p).Last();
             }
+            else if (File.Exists(jreexe))
+            {
+                javaexe = jreexe;
+            }
+            else if (File.Exists(jrearchive) && File.Exists(zipexe))
+            {
+                LogTCSection($@"Extracting {jrearchive} -> ..\..", () =>
+                {
+                    int result = RunCommand(zipexe, $@"x -o..\.. {jrearchive}");
+
+                    if (result != 0)
+                    {
+                        throw new ApplicationException($"Couldn't extract {jrearchive}: {result}");
+                    }
+                });
+                if (!File.Exists(jreexe))
+                {
+                    throw new ApplicationException("java.exe not found.");
+                }
+                javaexe = jreexe;
+            }
             else
             {
                 throw new ApplicationException("java.exe not found.");
             }
 
-            Log("Found java.exe here: '" + javaexe + "'");
+            Log($"Found java.exe here: '{javaexe}'");
         }
 
 
         string[] unminifiedFiles = Directory.GetFiles("js_unminified", "*.js");
-        Log("Found " + unminifiedFiles.Length + " javascripts.");
+        Log($"Found {unminifiedFiles.Length} javascripts.");
 
         foreach (string unminified in unminifiedFiles)
         {
             string minified = Path.GetFileName(unminified);
-            string minified_gcc = Path.GetFileNameWithoutExtension(minified) + "_gcc.js";
-            string minified_yui = Path.GetFileNameWithoutExtension(minified) + "_yui.js";
-            string gccargs = @"-jar compiler.jar --compilation_level SIMPLE_OPTIMIZATIONS --js " + unminified + " --js_output_file " + minified_gcc;
-            string yuiargs = @"-jar yuicompressor-2.4.8.jar " + unminified + " -o " + minified_yui;
+            string minified_gcc = $"{Path.GetFileNameWithoutExtension(minified)}_gcc.js";
+            string minified_yui = $"{Path.GetFileNameWithoutExtension(minified)}_yui.js";
+            string gccargs = $"-jar compiler.jar --compilation_level SIMPLE_OPTIMIZATIONS --js {unminified} --js_output_file {minified_gcc}";
+            string yuiargs = $"-jar yuicompressor-2.4.8.jar {unminified} -o {minified_yui}";
 
 
             long sizebefore = new FileInfo(unminified).Length;
             if (sizebefore == 0)
             {
-                throw new ApplicationException(Path.GetFullPath(unminified) + " 0 bytes!");
+                throw new ApplicationException($"{Path.GetFullPath(unminified)} 0 bytes!");
             }
 
             if (javaexe != null)
@@ -120,16 +145,16 @@ public class Program
 
                 if (result != 0)
                 {
-                    throw new ApplicationException("Google closure compiler error: " + result);
+                    throw new ApplicationException($"Google closure compiler error: {result}");
                 }
 
                 long sizeafter_gcc = new FileInfo(minified_gcc).Length;
                 if (sizeafter_gcc == 0)
                 {
-                    throw new ApplicationException(Path.GetFullPath(minified_gcc) + " 0 bytes!");
+                    throw new ApplicationException($"{Path.GetFullPath(minified_gcc)} 0 bytes!");
                 }
 
-                LogColor("Google closure compiler: " + minified + " minified from " + sizebefore + " -> " + sizeafter_gcc + ": " +
+                LogColor($"Google closure compiler: {minified} minified from {sizebefore} -> {sizeafter_gcc}: " +
                     string.Format("{0:+0.00;-0.00}", (1 - sizeafter_gcc * 1.0 / sizebefore) * -100) + "%", ConsoleColor.Green);
 
 
@@ -138,68 +163,68 @@ public class Program
 
                 if (result != 0)
                 {
-                    throw new ApplicationException("YUI compressor error: " + result);
+                    throw new ApplicationException($"YUI compressor error: {result}");
                 }
 
                 long sizeafter_yui = new FileInfo(minified_yui).Length;
                 if (sizeafter_yui == 0)
                 {
-                    throw new ApplicationException(Path.GetFullPath(minified_yui) + " 0 bytes!");
+                    throw new ApplicationException($"{Path.GetFullPath(minified_yui)} 0 bytes!");
                 }
 
-                LogColor("YUI compressor: " + minified + " minified from " + sizebefore + " -> " + sizeafter_yui + ": " +
+                LogColor($"YUI compressor: {minified} minified from {sizebefore} -> {sizeafter_yui}: " +
                     string.Format("{0:+0.00;-0.00}", (1 - sizeafter_yui * 1.0 / sizebefore) * -100) + "%", ConsoleColor.Green);
 
 
                 if (sizeafter_gcc < sizeafter_yui)
                 {
-                    Log(minified + ": Selecting Google closure compiler: " + minified_gcc + " -> " + minified + "...");
+                    Log($"{minified}: Selecting Google closure compiler: {minified_gcc} -> {minified}...");
                     if (File.Exists(minified))
                     {
                         File.Delete(minified);
                     }
                     File.Move(minified_gcc, minified);
-                    Log("Moved " + minified_gcc + " -> " + minified + "!");
+                    Log($"Moved {minified_gcc} -> {minified}!");
 
                     File.Delete(minified_yui);
                 }
                 else
                 {
-                    Log(minified + ": Selecting YUI compressor: " + minified_yui + " -> " + minified + "...");
+                    Log($"{minified}: Selecting YUI compressor: {minified_yui} -> {minified}...");
                     if (File.Exists(minified))
                     {
                         File.Delete(minified);
                     }
                     File.Move(minified_yui, minified);
-                    Log("Moved " + minified_yui + " -> " + minified + "!");
+                    Log($"Moved {minified_yui} -> {minified}!");
 
                     File.Delete(minified_gcc);
                 }
             }
             else
             {
-                Log("Copying " + unminified + " -> " + minified + "...");
+                Log($"Copying {unminified} -> {minified}...");
                 File.Copy(unminified, minified, true);
-                LogColor("Copied " + unminified + " -> " + minified + "!", ConsoleColor.Green);
+                LogColor($"Copied {unminified} -> {minified}!", ConsoleColor.Green);
             }
 
             long sizeafter = new FileInfo(minified).Length;
             if (sizeafter == 0)
             {
-                throw new ApplicationException(Path.GetFullPath(minified) + " 0 bytes!");
+                throw new ApplicationException($"{Path.GetFullPath(minified)} 0 bytes!");
             }
 
 
-            Log(minified + " minified from " + sizebefore + " -> " + sizeafter + ": " +
+            Log($"{minified} minified from {sizebefore} -> {sizeafter}: " +
                 string.Format("{0:+0.00;-0.00}", (1 - sizeafter * 1.0 / sizebefore) * -100) + "%");
 
             string cleanname = string.Join(string.Empty, minified.ToCharArray().Where(c => char.IsLetterOrDigit(c)));
 
-            Console.WriteLine("##teamcity[buildStatisticValue key='" + cleanname + "Size' value='" + sizeafter + "']");
+            LogTCStat($"{cleanname}Size", sizeafter);
 
             if (sizeafter > sizebefore)
             {
-                throw new ApplicationException(Path.GetFullPath(minified) + " got bigger!");
+                throw new ApplicationException($"{Path.GetFullPath(minified)} got bigger!");
             }
         }
     }
@@ -250,10 +275,10 @@ public class Program
 
         if (Environment.GetEnvironmentVariable("verbose") == "true")
         {
-            Log("Expanding: '" + path + "'");
+            Log($"Expanding: '{path}'");
             foreach (string returnpath in returnpaths)
             {
-                Log("  '" + returnpath + "'");
+                Log($"  '{returnpath}'");
             }
         }
 
@@ -262,6 +287,8 @@ public class Program
 
     private static int RunCommand(string exefile, string args)
     {
+        Log($"Running: '{exefile}' '{args}'");
+
         Process process = new Process();
         process.StartInfo = new ProcessStartInfo(exefile, args)
         {
@@ -272,6 +299,38 @@ public class Program
         process.WaitForExit();
 
         return process.ExitCode;
+    }
+
+    private static void LogTCSection(string message, Action action)
+    {
+        ConsoleColor oldColor = Console.ForegroundColor;
+        try
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"##teamcity[blockOpened name='{message}']");
+        }
+        finally
+        {
+            Console.ForegroundColor = oldColor;
+        }
+
+        action.Invoke();
+
+        oldColor = Console.ForegroundColor;
+        try
+        {
+            Console.ForegroundColor = ConsoleColor.Cyan;
+            Console.WriteLine($"##teamcity[blockClosed name='{message}']");
+        }
+        finally
+        {
+            Console.ForegroundColor = oldColor;
+        }
+    }
+
+    private static void LogTCStat(string key, long value)
+    {
+        Console.WriteLine($"##teamcity[buildStatisticValue key='{key}' value='{value}']");
     }
 
     private static void LogColor(string message, ConsoleColor color)
@@ -291,7 +350,7 @@ public class Program
     private static void Log(string message)
     {
         string hostname = Dns.GetHostName();
-        Console.WriteLine(hostname + ": " + message);
+        Console.WriteLine($"{hostname}: {message}");
     }
 }
 
